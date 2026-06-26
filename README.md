@@ -1,4 +1,4 @@
-# 🛡️ ThreatTron AI — Behavioral Fraud Detection Platform
+# 🛡️ GuardianFlow — Behavioral Fraud Detection Platform
 
 A production-ready banking anomaly detection system combining LightGBM machine learning, real-time telemetry streaming, and an interactive React dashboard.
 
