@@ -85,3 +85,75 @@ class FeatureImportance(BaseModel):
 class ShapExplanation(BaseModel):
     base_value: float
     shap_values: list[dict[str, Any]]
+
+
+# ── Case Investigation Schemas ────────────────────────────────────────────────
+
+class CaseEvidenceResponse(BaseModel):
+    id: int
+    case_id: int
+    source: str
+    description: str
+    severity: str
+
+    class Config:
+        from_attributes = True
+
+
+class AgentExecutionLogResponse(BaseModel):
+    id: int
+    case_id: int
+    step_number: int
+    thought: str | None = None
+    action: str | None = None
+    action_input: str | None = None
+    observation: str | None = None
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class MitigationActionResponse(BaseModel):
+    id: int
+    case_id: int
+    action_type: str
+    status: str
+    executed_by: str
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CaseResponse(BaseModel):
+    id: int
+    trigger_event_id: int
+    status: str
+    risk_score: float
+    summary: str | None = None
+    recommended_action: str | None = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CaseDetailResponse(CaseResponse):
+    evidence: list[CaseEvidenceResponse] = Field(default_factory=list)
+    logs: list[AgentExecutionLogResponse] = Field(default_factory=list)
+    actions: list[MitigationActionResponse] = Field(default_factory=list)
+
+    class Config:
+        from_attributes = True
+
+
+class InvestigateResponse(BaseModel):
+    case_id: int
+    status: str
+    risk_score: float
+    recommended_action: str
+    summary: str
+    evidence_count: int
+    logs_count: int
+

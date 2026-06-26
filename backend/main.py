@@ -2,16 +2,17 @@
 ThreatTron AI — FastAPI Backend (main.py)
 ==========================================
 Central ingestion API, risk prediction endpoints, dashboard analytics,
-and SHAP explanation routes.
+SHAP explanation routes, and autonomous case investigation trigger.
 """
 
 import os
 import sys
 import json
+import threading
 from pathlib import Path
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -20,8 +21,9 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from backend.database import get_db, init_db
+from backend.database import get_db, init_db, SessionLocal
 from backend import crud
+from backend.models import Case, TelemetryEvent
 from backend.schemas import (
     BatchPayload,
     PredictRequest,
@@ -32,7 +34,12 @@ from backend.schemas import (
     TimelinePoint,
     FeatureImportance,
     ShapExplanation,
+    CaseResponse,
+    CaseDetailResponse,
+    CaseEvidenceResponse,
+    InvestigateResponse,
 )
+from backend.investigation_service import InvestigationService
 
 # ── Lazy model service (loaded once at startup) ─────────────────────────────
 _model_svc = None
@@ -57,6 +64,7 @@ def _get_model():
 async def lifespan(app: FastAPI):
     init_db()
     try:
+        _backfill_cases_for_existing_high_risk_events()
         _get_model()
         print("✅  Model service loaded successfully.")
     except Exception as e:
@@ -152,7 +160,98 @@ def ingest_batch(payload: BatchPayload, db: Session = Depends(get_db)):
         )
         results.append(event_row)
 
+        # ── Auto-trigger case investigation for high-risk events ──────────────
+        if risk_score >= 0.80:
+            _trigger_case_investigation(db, event_row.id, risk_score)
+
     return results
+
+
+def _backfill_cases_for_existing_high_risk_events() -> None:
+    """Create missing case records for high-risk telemetry events already in the DB."""
+    db = SessionLocal()
+    try:
+        high_risk_events = (
+            db.query(TelemetryEvent)
+            .filter(TelemetryEvent.risk_score >= 0.80)
+            .order_by(TelemetryEvent.id)
+            .all()
+        )
+        for event in high_risk_events:
+            existing = db.query(Case).filter(Case.trigger_event_id == event.id).first()
+            if existing:
+                continue
+            _trigger_case_investigation(db, event.id, event.risk_score or 0.0)
+    finally:
+        db.close()
+
+
+def _trigger_case_investigation(db: Session, event_id: int, risk_score: float) -> None:
+    """
+    Create a Case record and run the InvestigationService synchronously.
+    Called in the same request context so the DB session is still valid.
+    """
+    try:
+        existing = db.query(Case).filter(Case.trigger_event_id == event_id).first()
+        if existing:
+            return
+
+        case = crud.create_case(
+            db=db,
+            trigger_event_id=event_id,
+            risk_score=risk_score,
+            summary="Investigation pending…",
+            recommended_action="PENDING",
+        )
+        crud.update_case_status(db, case.id, status="INVESTIGATING")
+
+        findings = InvestigationService.analyze_event(
+            db=db,
+            event_id=event_id,
+            case_id=case.id,
+        )
+
+        # Build narrative summary from findings
+        risk_factors_txt = "; ".join(findings.get("risk_factors", []))
+        summary = (
+            f"Session {findings.get('session_id', 'N/A')} flagged with risk score "
+            f"{risk_score:.4f}. Detected: {risk_factors_txt or 'anomalous ML pattern'}. "
+            f"Historical average amount: {findings.get('average_amount', 0)}, "
+            f"current amount: {findings.get('current_amount', 0)}. "
+            f"Previous alerts in session: {findings.get('previous_alerts', 0)}."
+        )
+
+        crud.update_case_status(
+            db=db,
+            case_id=case.id,
+            status="OPEN",
+            summary=summary,
+            recommended_action=findings.get("recommended_action", "BLOCK_ACCOUNT"),
+        )
+
+        # Log the investigation as a single agent execution step
+        crud.create_agent_log(
+            db=db,
+            case_id=case.id,
+            step_number=1,
+            thought="Analyzing high-risk event for behavioral anomalies and contextual signals.",
+            action="InvestigationService.analyze_event",
+            action_input=f"event_id={event_id}",
+            observation=json.dumps({
+                k: v for k, v in findings.items() if k != "risk_factors"
+            }),
+        )
+
+        # Create recommended mitigation action
+        crud.create_mitigation_action(
+            db=db,
+            case_id=case.id,
+            action_type=findings.get("recommended_action", "BLOCK_ACCOUNT"),
+            status="PENDING_APPROVAL",
+            executed_by="AGENT_AUTO",
+        )
+    except Exception as exc:
+        print(f"[case-trigger] Failed to create case for event {event_id}: {exc}")
 
 
 # ── Query Events ─────────────────────────────────────────────────────────────
@@ -250,3 +349,103 @@ def model_evaluation():
         raise HTTPException(status_code=404, detail="Evaluation report not found. Run evaluate.py first.")
     with open(str(report_path), "r") as f:
         return json.load(f)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  CASE INVESTIGATION ENDPOINTS
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── List Cases ───────────────────────────────────────────────────────────────
+@app.get("/api/cases", response_model=list[CaseResponse])
+def list_cases(
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    status: str | None = Query(None, description="Filter by status: OPEN, INVESTIGATING, CLOSED"),
+    db: Session = Depends(get_db),
+):
+    """List all investigation cases, optionally filtered by status."""
+    return crud.get_cases(db, limit=limit, offset=offset, status=status)
+
+
+# ── Get Case Detail ───────────────────────────────────────────────────────────
+@app.get("/api/cases/{case_id}", response_model=CaseDetailResponse)
+def get_case(case_id: int, db: Session = Depends(get_db)):
+    """Fetch a single case with evidence, execution logs, and actions."""
+    case = crud.get_case_by_id(db, case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail=f"Case {case_id} not found.")
+    return case
+
+
+# ── Get Case Evidence ────────────────────────────────────────────────────────
+@app.get("/api/cases/{case_id}/evidence", response_model=list[CaseEvidenceResponse])
+def get_case_evidence(case_id: int, db: Session = Depends(get_db)):
+    """Fetch all evidence records attached to a specific case."""
+    case = crud.get_case_by_id(db, case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail=f"Case {case_id} not found.")
+    return crud.get_case_evidence(db, case_id)
+
+
+# ── Re-Run Investigation ─────────────────────────────────────────────────────
+@app.post("/api/cases/{case_id}/investigate", response_model=InvestigateResponse)
+def re_investigate_case(case_id: int, db: Session = Depends(get_db)):
+    """
+    Trigger or re-run the investigation service for an existing case.
+    Useful when additional signals become available after initial creation.
+    """
+    case = crud.get_case_by_id(db, case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail=f"Case {case_id} not found.")
+
+    crud.update_case_status(db, case_id, status="INVESTIGATING")
+
+    findings = InvestigationService.analyze_event(
+        db=db,
+        event_id=case.trigger_event_id,
+        case_id=case_id,
+    )
+
+    risk_factors_txt = "; ".join(findings.get("risk_factors", []))
+    summary = (
+        f"Re-investigation of session {findings.get('session_id', 'N/A')}. "
+        f"Detected: {risk_factors_txt or 'anomalous ML pattern'}. "
+        f"Historical average: {findings.get('average_amount', 0)}, "
+        f"current: {findings.get('current_amount', 0)}. "
+        f"Previous alerts: {findings.get('previous_alerts', 0)}."
+    )
+
+    next_step = len(case.logs) + 1
+    crud.create_agent_log(
+        db=db,
+        case_id=case_id,
+        step_number=next_step,
+        thought="Re-analyzing event with full historical context.",
+        action="InvestigationService.analyze_event",
+        action_input=f"event_id={case.trigger_event_id}",
+        observation=json.dumps({
+            k: v for k, v in findings.items() if k != "risk_factors"
+        }),
+    )
+
+    recommended = findings.get("recommended_action", "BLOCK_ACCOUNT")
+    updated = crud.update_case_status(
+        db=db,
+        case_id=case_id,
+        status="OPEN",
+        summary=summary,
+        recommended_action=recommended,
+    )
+
+    evidence = crud.get_case_evidence(db, case_id)
+    logs = updated.logs if updated else []
+
+    return InvestigateResponse(
+        case_id=case_id,
+        status=updated.status if updated else "OPEN",
+        risk_score=case.risk_score,
+        recommended_action=recommended,
+        summary=summary,
+        evidence_count=len(evidence),
+        logs_count=len(logs),
+    )

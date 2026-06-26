@@ -11,7 +11,14 @@ from typing import Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 
-from backend.models import AgentSession, TelemetryEvent
+from backend.models import (
+    AgentSession,
+    TelemetryEvent,
+    Case,
+    CaseEvidence,
+    AgentExecutionLog,
+    MitigationAction,
+)
 
 
 # ── Sessions ─────────────────────────────────────────────────────────────────
@@ -123,3 +130,134 @@ def get_risk_timeline(db: Session, limit: int = 100) -> list[dict]:
             "risk_level": e.risk_level or "LOW",
         })
     return timeline
+
+
+# ── Case Investigation CRUD ───────────────────────────────────────────────────
+
+def create_case(
+    db: Session,
+    trigger_event_id: int,
+    risk_score: float,
+    summary: str = "",
+    recommended_action: str = "PENDING",
+) -> Case:
+    case = Case(
+        trigger_event_id=trigger_event_id,
+        status="OPEN",
+        risk_score=risk_score,
+        summary=summary,
+        recommended_action=recommended_action,
+        created_at=datetime.datetime.utcnow(),
+    )
+    db.add(case)
+    db.commit()
+    db.refresh(case)
+    return case
+
+
+def get_cases(
+    db: Session,
+    limit: int = 100,
+    offset: int = 0,
+    status: str | None = None,
+) -> list[Case]:
+    q = db.query(Case)
+    if status:
+        q = q.filter(Case.status == status)
+    return q.order_by(desc(Case.created_at)).offset(offset).limit(limit).all()
+
+
+def get_case_by_id(db: Session, case_id: int) -> Case | None:
+    return db.query(Case).filter(Case.id == case_id).first()
+
+
+def update_case_status(
+    db: Session,
+    case_id: int,
+    status: str,
+    summary: str | None = None,
+    recommended_action: str | None = None,
+) -> Case | None:
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
+        return None
+    case.status = status
+    if summary is not None:
+        case.summary = summary
+    if recommended_action is not None:
+        case.recommended_action = recommended_action
+    db.commit()
+    db.refresh(case)
+    return case
+
+
+def create_evidence(
+    db: Session,
+    case_id: int,
+    source: str,
+    description: str,
+    severity: str = "MEDIUM",
+) -> CaseEvidence:
+    ev = CaseEvidence(
+        case_id=case_id,
+        source=source,
+        description=description,
+        severity=severity,
+    )
+    db.add(ev)
+    db.commit()
+    db.refresh(ev)
+    return ev
+
+
+def get_case_evidence(db: Session, case_id: int) -> list[CaseEvidence]:
+    return (
+        db.query(CaseEvidence)
+        .filter(CaseEvidence.case_id == case_id)
+        .order_by(CaseEvidence.id)
+        .all()
+    )
+
+
+def create_agent_log(
+    db: Session,
+    case_id: int,
+    step_number: int,
+    thought: str | None = None,
+    action: str | None = None,
+    action_input: str | None = None,
+    observation: str | None = None,
+) -> AgentExecutionLog:
+    log = AgentExecutionLog(
+        case_id=case_id,
+        step_number=step_number,
+        thought=thought,
+        action=action,
+        action_input=action_input,
+        observation=observation,
+        timestamp=datetime.datetime.utcnow(),
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+    return log
+
+
+def create_mitigation_action(
+    db: Session,
+    case_id: int,
+    action_type: str,
+    status: str = "PENDING_APPROVAL",
+    executed_by: str = "AGENT_AUTO",
+) -> MitigationAction:
+    action = MitigationAction(
+        case_id=case_id,
+        action_type=action_type,
+        status=status,
+        executed_by=executed_by,
+        updated_at=datetime.datetime.utcnow(),
+    )
+    db.add(action)
+    db.commit()
+    db.refresh(action)
+    return action

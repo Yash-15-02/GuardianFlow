@@ -5,12 +5,18 @@ Supports SQLite (default) and MySQL (via DATABASE_URL env var).
 """
 
 import os
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
+# Always resolve DB path relative to this file so it works regardless of
+# which directory the server is launched from.
+_HERE = Path(__file__).resolve().parent          # .../Hck/backend/
+_DEFAULT_DB = _HERE / "threattron.db"            # .../Hck/backend/threattron.db
+
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "sqlite:///threattron.db",
+    f"sqlite:///{_DEFAULT_DB}",
 )
 
 # SQLite needs check_same_thread=False for FastAPI's async workers

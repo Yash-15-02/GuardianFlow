@@ -9,6 +9,8 @@ import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Analytics from "./pages/Analytics";
 import Sandbox from "./pages/Sandbox";
+import CaseManager from "./pages/CaseManager";
+import CaseDetails from "./pages/CaseDetails";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,6 +33,8 @@ export default function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/sandbox" element={<Sandbox />} />
+              <Route path="/cases" element={<CaseManager />} />
+              <Route path="/cases/:caseId" element={<CaseDetails />} />
             </Routes>
           </main>
         </div>

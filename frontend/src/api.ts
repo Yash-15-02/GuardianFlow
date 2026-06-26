@@ -5,7 +5,7 @@
 
 import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_URL || "";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -130,4 +130,81 @@ export const fetchSampleRow = (index: number) =>
 export const fetchEvaluationReport = () =>
   api.get<EvaluationReport>("/api/model/evaluation").then((r) => r.data);
 
+/* ── Case Investigation Types ──────────────────────────────────────────────── */
+
+export interface CaseEvidence {
+  id: number;
+  case_id: number;
+  source: string;
+  description: string;
+  severity: string;
+}
+
+export interface AgentExecutionLog {
+  id: number;
+  case_id: number;
+  step_number: number;
+  thought: string | null;
+  action: string | null;
+  action_input: string | null;
+  observation: string | null;
+  timestamp: string;
+}
+
+export interface MitigationActionItem {
+  id: number;
+  case_id: number;
+  action_type: string;
+  status: string;
+  executed_by: string;
+  updated_at: string;
+}
+
+export interface Case {
+  id: number;
+  trigger_event_id: number;
+  status: string;
+  risk_score: number;
+  summary: string | null;
+  recommended_action: string | null;
+  created_at: string;
+}
+
+export interface CaseDetail extends Case {
+  evidence: CaseEvidence[];
+  logs: AgentExecutionLog[];
+  actions: MitigationActionItem[];
+}
+
+export interface InvestigateResponse {
+  case_id: number;
+  status: string;
+  risk_score: number;
+  recommended_action: string;
+  summary: string;
+  evidence_count: number;
+  logs_count: number;
+}
+
+/* ── Case Endpoints ─────────────────────────────────────────────────────────── */
+
+export const fetchCases = (limit = 100, offset = 0, status?: string) =>
+  api
+    .get<Case[]>("/api/cases", { params: { limit, offset, status } })
+    .then((r) => r.data);
+
+export const fetchCaseById = (caseId: number) =>
+  api.get<CaseDetail>(`/api/cases/${caseId}`).then((r) => r.data);
+
+export const fetchCaseEvidence = (caseId: number) =>
+  api
+    .get<CaseEvidence[]>(`/api/cases/${caseId}/evidence`)
+    .then((r) => r.data);
+
+export const reInvestigateCase = (caseId: number) =>
+  api
+    .post<InvestigateResponse>(`/api/cases/${caseId}/investigate`)
+    .then((r) => r.data);
+
 export default api;
+

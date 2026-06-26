@@ -8,6 +8,7 @@ const links = [
   { to: "/", label: "Dashboard", icon: "📊" },
   { to: "/analytics", label: "Analytics", icon: "📈" },
   { to: "/sandbox", label: "ML Sandbox", icon: "🧪" },
+  { to: "/cases", label: "Case Manager", icon: "🕵️" },
 ];
 
 export default function Sidebar() {
