@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+/* ── ThreatTron AI — Custom Design Tokens ──────────────────────────────────── */
+
+@theme {
+  --color-navy-950: #0a0e1a;
+  --color-navy-900: #0d1224;
+  --color-navy-800: #111830;
+  --color-navy-700: #1a2342;
+  --color-navy-600: #243054;
+  --color-navy-500: #2e3d66;
+
+  --color-cyan-400: #22d3ee;
+  --color-cyan-500: #06b6d4;
+  --color-cyan-600: #0891b2;
+
+  --color-purple-400: #c084fc;
+  --color-purple-500: #a855f7;
+  --color-purple-600: #9333ea;
+
+  --color-risk-low: #22c55e;
+  --color-risk-medium: #eab308;
+  --color-risk-high: #ef4444;
+
+  --color-glass: rgba(17, 24, 48, 0.65);
+  --color-glass-border: rgba(34, 211, 238, 0.12);
+}
+
+/* ── Global Resets ─────────────────────────────────────────────────────────── */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(135deg, var(--color-navy-950) 0%, var(--color-navy-900) 50%, #0f0c29 100%);
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-navy-950);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-navy-600);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-cyan-600);
+}
+
+/* ── Glassmorphism Card ────────────────────────────────────────────────────── */
+
+.glass-card {
+  background: var(--color-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--color-glass-border);
+  border-radius: 16px;
+  padding: 24px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(6, 182, 212, 0.08);
+}
+
+/* ── Pulse animation for high-risk alerts ──────────────────────────────────── */
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+.pulse-alert {
+  animation: pulse-ring 2s ease-in-out infinite;
+}
+
+/* ── Gauge glow ────────────────────────────────────────────────────────────── */
+
+@keyframes glow-rotate {
+  0% { filter: drop-shadow(0 0 6px rgba(6, 182, 212, 0.4)); }
+  50% { filter: drop-shadow(0 0 16px rgba(6, 182, 212, 0.7)); }
+  100% { filter: drop-shadow(0 0 6px rgba(6, 182, 212, 0.4)); }
+}
+
+.gauge-glow {
+  animation: glow-rotate 3s ease-in-out infinite;
+}
+
+/* ── Fade-in ───────────────────────────────────────────────────────────────── */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeInUp 0.5s ease-out forwards;
+}

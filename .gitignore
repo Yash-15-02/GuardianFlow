@@ -1,0 +1,27 @@
+# Data and Databases
+DataSet.csv
+backend/threattron.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+venv/
+ENV/
+
+# Processed ML Data (contains files > 100MB)
+Behavioural-model/processed/*.csv
+
+# Node (Frontend)
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.env
+frontend/*.local
+
+# OS files
+.DS_Store
+Thumbs.db

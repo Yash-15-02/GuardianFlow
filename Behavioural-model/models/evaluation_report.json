@@ -1,0 +1,166 @@
+{
+  "accuracy": 1.0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1_score": 1.0,
+  "roc_auc": 1.0,
+  "confusion_matrix": {
+    "true_negative": 1801,
+    "false_positive": 0,
+    "false_negative": 0,
+    "true_positive": 16
+  },
+  "classification_report": {
+    "Normal": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 1801.0
+    },
+    "Anomaly": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 16.0
+    },
+    "accuracy": 1.0,
+    "macro avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 1817.0
+    },
+    "weighted avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 1817.0
+    }
+  },
+  "roc_curve": {
+    "fpr": [
+      0.0,
+      0.0,
+      0.0,
+      0.522488,
+      0.523598,
+      0.821766,
+      0.822876,
+      0.835647,
+      0.836757,
+      0.959467,
+      0.960577,
+      1.0
+    ],
+    "tpr": [
+      0.0,
+      0.125,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "thresholds": [
+      Infinity,
+      0.999999,
+      0.958773,
+      3.4e-05,
+      3.4e-05,
+      1.6e-05,
+      1.6e-05,
+      1.6e-05,
+      1.6e-05,
+      9e-06,
+      9e-06,
+      3e-06
+    ]
+  },
+  "top_features": [
+    {
+      "feature": "F3912",
+      "importance": 243.0
+    },
+    {
+      "feature": "F1813",
+      "importance": 71.0
+    },
+    {
+      "feature": "F3348",
+      "importance": 69.0
+    },
+    {
+      "feature": "F2230",
+      "importance": 63.0
+    },
+    {
+      "feature": "F1165",
+      "importance": 49.0
+    },
+    {
+      "feature": "F3799",
+      "importance": 48.0
+    },
+    {
+      "feature": "F3598",
+      "importance": 32.0
+    },
+    {
+      "feature": "F3534",
+      "importance": 30.0
+    },
+    {
+      "feature": "F364",
+      "importance": 29.0
+    },
+    {
+      "feature": "F162",
+      "importance": 27.0
+    },
+    {
+      "feature": "F1166",
+      "importance": 26.0
+    },
+    {
+      "feature": "F1814",
+      "importance": 23.0
+    },
+    {
+      "feature": "F2686",
+      "importance": 22.0
+    },
+    {
+      "feature": "F3801",
+      "importance": 19.0
+    },
+    {
+      "feature": "F3898",
+      "importance": 19.0
+    },
+    {
+      "feature": "F1489",
+      "importance": 18.0
+    },
+    {
+      "feature": "F3894",
+      "importance": 18.0
+    },
+    {
+      "feature": "F2032",
+      "importance": 17.0
+    },
+    {
+      "feature": "F161",
+      "importance": 16.0
+    },
+    {
+      "feature": "F3642",
+      "importance": 16.0
+    }
+  ]
+}

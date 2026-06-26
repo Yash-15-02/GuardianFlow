@@ -1,0 +1,49 @@
+# ──────────────────────────────────────────────
+# ThreatTron AI — Behavioural Model Configuration
+# ──────────────────────────────────────────────
+
+paths:
+  dataset: "../DataSet.csv"
+  processed_dir: "processed"
+  models_dir: "models"
+
+target_column: "F3924"
+drop_columns:
+  - "Unnamed: 0"
+
+categorical_columns:
+  - "F2230"
+  - "F3886"
+  - "F3888"
+  - "F3889"
+  - "F3890"
+  - "F3891"
+  - "F3892"
+  - "F3893"
+
+training:
+  test_size: 0.2
+  random_state: 42
+  n_splits: 5   # Stratified K-Fold
+
+lightgbm:
+  n_estimators: 300
+  learning_rate: 0.05
+  max_depth: 7
+  num_leaves: 31
+  min_child_samples: 5
+  subsample: 0.8
+  colsample_bytree: 0.8
+  reg_alpha: 0.1
+  reg_lambda: 1.0
+  scale_pos_weight: 111.12  # 9001 / 81 ≈ 111
+  class_weight: "balanced"
+  verbosity: -1
+  n_jobs: -1
+
+thresholds:
+  risk_high: 0.80
+  risk_medium: 0.45
+  risk_low: 0.15
+
+top_features_count: 20

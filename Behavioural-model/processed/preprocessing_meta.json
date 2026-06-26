@@ -1,0 +1,20 @@
+{
+  "total_rows": 9082,
+  "total_features": 3860,
+  "categorical_encoded": [
+    "F2230",
+    "F3886",
+    "F3888",
+    "F3889",
+    "F3890",
+    "F3891",
+    "F3892",
+    "F3893"
+  ],
+  "all_nan_dropped": 63,
+  "nan_imputed": 9272322,
+  "class_distribution": {
+    "0": 9001,
+    "1": 81
+  }
+}

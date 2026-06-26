@@ -1,0 +1,101 @@
+{
+  "accuracy": 1.0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1_score": 1.0,
+  "roc_auc": 1.0,
+  "cv_auc_mean": 0.9985,
+  "cv_auc_std": 0.0025,
+  "confusion_matrix": [
+    [
+      1801,
+      0
+    ],
+    [
+      0,
+      16
+    ]
+  ],
+  "top_features": [
+    {
+      "feature": "F3912",
+      "importance": 243
+    },
+    {
+      "feature": "F1813",
+      "importance": 71
+    },
+    {
+      "feature": "F3348",
+      "importance": 69
+    },
+    {
+      "feature": "F2230",
+      "importance": 63
+    },
+    {
+      "feature": "F1165",
+      "importance": 49
+    },
+    {
+      "feature": "F3799",
+      "importance": 48
+    },
+    {
+      "feature": "F3598",
+      "importance": 32
+    },
+    {
+      "feature": "F3534",
+      "importance": 30
+    },
+    {
+      "feature": "F364",
+      "importance": 29
+    },
+    {
+      "feature": "F162",
+      "importance": 27
+    },
+    {
+      "feature": "F1166",
+      "importance": 26
+    },
+    {
+      "feature": "F1814",
+      "importance": 23
+    },
+    {
+      "feature": "F2686",
+      "importance": 22
+    },
+    {
+      "feature": "F3801",
+      "importance": 19
+    },
+    {
+      "feature": "F3898",
+      "importance": 19
+    },
+    {
+      "feature": "F1489",
+      "importance": 18
+    },
+    {
+      "feature": "F3894",
+      "importance": 18
+    },
+    {
+      "feature": "F2032",
+      "importance": 17
+    },
+    {
+      "feature": "F161",
+      "importance": 16
+    },
+    {
+      "feature": "F3642",
+      "importance": 16
+    }
+  ]
+}
