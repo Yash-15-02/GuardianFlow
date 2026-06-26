@@ -98,6 +98,18 @@ class Case(Base):
         back_populates="case",
         cascade="all, delete-orphan",
     )
+    reasoning = relationship(
+        "CaseReasoning",
+        back_populates="case",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+    decision = relationship(
+        "CaseDecision",
+        back_populates="case",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
     def __repr__(self) -> str:
         return f"<Case id={self.id} status={self.status}>"
@@ -168,4 +180,62 @@ class MitigationAction(Base):
 
     def __repr__(self) -> str:
         return f"<MitigationAction id={self.id} type={self.action_type}>"
+
+
+# ── Reasoning & Decision Models ───────────────────────────────────────────────
+
+class CaseReasoning(Base):
+    """
+    Natural-language investigation report produced by the Reasoning Agent.
+    One-to-one with Case (upserted on each /reason call).
+    """
+    __tablename__ = "case_reasoning"
+
+    id                   = Column(Integer, primary_key=True, autoincrement=True)
+    case_id              = Column(
+        Integer,
+        ForeignKey("investigation_cases.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    executive_summary    = Column(Text, nullable=True)
+    findings_json        = Column(Text, nullable=True)   # JSON list[str]
+    confidence           = Column(Float, nullable=False, default=0.0)
+    rationale            = Column(Text, nullable=True)
+    reasoning_trace_json = Column(Text, nullable=True)   # JSON dict
+    provider             = Column(String(64), nullable=False, default="LOCAL")
+    created_at           = Column(DateTime, default=datetime.datetime.utcnow)
+
+    case = relationship("Case", back_populates="reasoning")
+
+    def __repr__(self) -> str:
+        return f"<CaseReasoning case_id={self.case_id} confidence={self.confidence}>"
+
+
+class CaseDecision(Base):
+    """
+    Autonomous decision produced by the Decision Engine.
+    One-to-one with Case (upserted on each /decide call).
+    """
+    __tablename__ = "case_decisions"
+
+    id                   = Column(Integer, primary_key=True, autoincrement=True)
+    case_id              = Column(
+        Integer,
+        ForeignKey("investigation_cases.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    decision             = Column(String(32), nullable=False)
+    decision_confidence  = Column(Float, nullable=False, default=0.0)
+    decision_rationale   = Column(Text, nullable=True)
+    decision_trace_json  = Column(Text, nullable=True)   # JSON dict
+    created_at           = Column(DateTime, default=datetime.datetime.utcnow)
+
+    case = relationship("Case", back_populates="decision")
+
+    def __repr__(self) -> str:
+        return f"<CaseDecision case_id={self.case_id} decision={self.decision}>"
 

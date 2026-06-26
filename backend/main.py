@@ -38,8 +38,18 @@ from backend.schemas import (
     CaseDetailResponse,
     CaseEvidenceResponse,
     InvestigateResponse,
+    ReasoningResponse,
+    DecisionResponse,
+    ReasonAndDecideResponse,
 )
 from backend.investigation_service import InvestigationService
+from backend.reasoning_service import ReasoningService
+from backend.decision_engine import DecisionService
+
+# Provider selection via environment (defaults to local/rule_based)
+import os
+_REASONING_PROVIDER = os.environ.get("REASONING_PROVIDER", "local")
+_DECISION_PROVIDER  = os.environ.get("DECISION_PROVIDER",  "rule_based")
 
 # ── Lazy model service (loaded once at startup) ─────────────────────────────
 _model_svc = None
@@ -370,7 +380,7 @@ def list_cases(
 # ── Get Case Detail ───────────────────────────────────────────────────────────
 @app.get("/api/cases/{case_id}", response_model=CaseDetailResponse)
 def get_case(case_id: int, db: Session = Depends(get_db)):
-    """Fetch a single case with evidence, execution logs, and actions."""
+    """Fetch a single case with evidence, execution logs, actions, reasoning, and decision."""
     case = crud.get_case_by_id(db, case_id)
     if not case:
         raise HTTPException(status_code=404, detail=f"Case {case_id} not found.")
@@ -449,3 +459,71 @@ def re_investigate_case(case_id: int, db: Session = Depends(get_db)):
         evidence_count=len(evidence),
         logs_count=len(logs),
     )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  REASONING & DECISION ENDPOINTS
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.post("/api/cases/{case_id}/reason", response_model=ReasonAndDecideResponse)
+def run_reasoning(case_id: int, db: Session = Depends(get_db)):
+    """
+    Trigger the Reasoning Agent for a case.
+    After reasoning completes, the Decision Engine runs automatically.
+    Returns both the reasoning report and the autonomous decision.
+    """
+    case = crud.get_case_by_id(db, case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail=f"Case {case_id} not found.")
+
+    try:
+        reasoning_row = ReasoningService(provider=_REASONING_PROVIDER).run(db, case_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Reasoning failed: {exc}")
+
+    try:
+        decision_row = DecisionService(provider=_DECISION_PROVIDER).run(db, case_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Decision engine failed: {exc}")
+
+    return ReasonAndDecideResponse(
+        reasoning=ReasoningResponse.model_validate(reasoning_row),
+        decision=DecisionResponse.model_validate(decision_row),
+    )
+
+
+@app.get("/api/cases/{case_id}/reasoning", response_model=ReasoningResponse)
+def get_reasoning(case_id: int, db: Session = Depends(get_db)):
+    """Retrieve the stored reasoning report for a case."""
+    row = crud.get_reasoning_by_case(db, case_id)
+    if not row:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No reasoning found for case {case_id}. Call POST /api/cases/{case_id}/reason first.",
+        )
+    return ReasoningResponse.model_validate(row)
+
+
+@app.post("/api/cases/{case_id}/decide", response_model=DecisionResponse)
+def run_decision(case_id: int, db: Session = Depends(get_db)):
+    """Run the Decision Engine independently for a case (reasoning must exist)."""
+    case = crud.get_case_by_id(db, case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail=f"Case {case_id} not found.")
+    try:
+        decision_row = DecisionService(provider=_DECISION_PROVIDER).run(db, case_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Decision engine failed: {exc}")
+    return DecisionResponse.model_validate(decision_row)
+
+
+@app.get("/api/cases/{case_id}/decision", response_model=DecisionResponse)
+def get_decision(case_id: int, db: Session = Depends(get_db)):
+    """Retrieve the stored autonomous decision for a case."""
+    row = crud.get_decision_by_case(db, case_id)
+    if not row:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No decision found for case {case_id}. Call POST /api/cases/{case_id}/reason or /decide first.",
+        )
+    return DecisionResponse.model_validate(row)

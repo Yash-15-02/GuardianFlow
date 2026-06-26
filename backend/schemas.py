@@ -6,7 +6,7 @@ ThreatTron AI — Pydantic Schemas (Request / Response)
 from __future__ import annotations
 from datetime import datetime
 from typing import Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ── Request Bodies ───────────────────────────────────────────────────────────
@@ -143,6 +143,8 @@ class CaseDetailResponse(CaseResponse):
     evidence: list[CaseEvidenceResponse] = Field(default_factory=list)
     logs: list[AgentExecutionLogResponse] = Field(default_factory=list)
     actions: list[MitigationActionResponse] = Field(default_factory=list)
+    reasoning: "ReasoningResponse | None" = None
+    decision: "DecisionResponse | None" = None
 
     class Config:
         from_attributes = True
@@ -157,3 +159,82 @@ class InvestigateResponse(BaseModel):
     evidence_count: int
     logs_count: int
 
+
+# ── Reasoning Agent Schemas ───────────────────────────────────────────────────
+
+class ReasoningResponse(BaseModel):
+    id: int
+    case_id: int
+    executive_summary: str | None = None
+    findings: list[str] = Field(default_factory=list)
+    confidence: float
+    rationale: str | None = None
+    reasoning_trace: dict[str, Any] = Field(default_factory=dict)
+    provider: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+    @model_validator(mode="before")
+    @classmethod
+    def _deserialize_json_fields(cls, values: Any) -> Any:
+        import json
+        if not isinstance(values, dict):
+            data = {}
+            for field_name in list(cls.model_fields.keys()) + ["findings_json", "reasoning_trace_json"]:
+                if hasattr(values, field_name):
+                    data[field_name] = getattr(values, field_name)
+        else:
+            data = dict(values) if values else {}
+
+        # Deserialize stored JSON strings
+        for src, dst in [("findings_json", "findings"), ("reasoning_trace_json", "reasoning_trace")]:
+            raw = data.pop(src, None)
+            if raw and isinstance(raw, str):
+                try:
+                    data[dst] = json.loads(raw)
+                except Exception:
+                    data.setdefault(dst, [] if dst == "findings" else {})
+        return data
+
+
+# ── Decision Engine Schemas ───────────────────────────────────────────────────
+
+class DecisionResponse(BaseModel):
+    id: int
+    case_id: int
+    decision: str
+    decision_confidence: float
+    decision_rationale: str | None = None
+    decision_trace: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+    @model_validator(mode="before")
+    @classmethod
+    def _deserialize_json_fields(cls, values: Any) -> Any:
+        import json
+        if not isinstance(values, dict):
+            data = {}
+            for field_name in list(cls.model_fields.keys()) + ["decision_trace_json"]:
+                if hasattr(values, field_name):
+                    data[field_name] = getattr(values, field_name)
+        else:
+            data = dict(values) if values else {}
+
+        raw = data.pop("decision_trace_json", None)
+        if raw and isinstance(raw, str):
+            try:
+                data["decision_trace"] = json.loads(raw)
+            except Exception:
+                data.setdefault("decision_trace", {})
+        return data
+
+
+class ReasonAndDecideResponse(BaseModel):
+    """Combined response when /reason auto-triggers /decide."""
+    reasoning: ReasoningResponse
+    decision: DecisionResponse

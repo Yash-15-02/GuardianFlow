@@ -206,5 +206,58 @@ export const reInvestigateCase = (caseId: number) =>
     .post<InvestigateResponse>(`/api/cases/${caseId}/investigate`)
     .then((r) => r.data);
 
-export default api;
+/* ── Reasoning Agent Types ──────────────────────────────────────────────────── */
 
+export interface ReasoningResult {
+  id: number;
+  case_id: number;
+  executive_summary: string | null;
+  findings: string[];
+  confidence: number;
+  rationale: string | null;
+  reasoning_trace: Record<string, unknown>;
+  provider: string;
+  created_at: string;
+}
+
+/* ── Decision Engine Types ──────────────────────────────────────────────────── */
+
+export interface DecisionResult {
+  id: number;
+  case_id: number;
+  decision: "APPROVE" | "MFA_CHALLENGE" | "MANUAL_REVIEW" | "BLOCK_ACCOUNT";
+  decision_confidence: number;
+  decision_rationale: string | null;
+  decision_trace: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ReasonAndDecideResult {
+  reasoning: ReasoningResult;
+  decision: DecisionResult;
+}
+
+/* ── Reasoning & Decision Endpoints ─────────────────────────────────────────── */
+
+/** Trigger Reasoning Agent → auto-runs Decision Engine → returns both */
+export const triggerReasoning = (caseId: number) =>
+  api
+    .post<ReasonAndDecideResult>(`/api/cases/${caseId}/reason`)
+    .then((r) => r.data);
+
+export const fetchReasoning = (caseId: number) =>
+  api
+    .get<ReasoningResult>(`/api/cases/${caseId}/reasoning`)
+    .then((r) => r.data);
+
+export const triggerDecision = (caseId: number) =>
+  api
+    .post<DecisionResult>(`/api/cases/${caseId}/decide`)
+    .then((r) => r.data);
+
+export const fetchDecision = (caseId: number) =>
+  api
+    .get<DecisionResult>(`/api/cases/${caseId}/decision`)
+    .then((r) => r.data);
+
+export default api;

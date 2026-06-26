@@ -21,11 +21,11 @@ const ACTION_COLORS: Record<string, string> = {
   PENDING: "text-white/30",
 };
 
-const SEVERITY_GRADIENT: Record<string, string> = {
-  HIGH: "from-red-500/20 border-red-500/30",
-  MEDIUM: "from-yellow-500/20 border-yellow-500/30",
-  LOW: "from-emerald-500/20 border-emerald-500/30",
-};
+// const SEVERITY_GRADIENT: Record<string, string> = {
+//   HIGH: "from-red-500/20 border-red-500/30",
+//   MEDIUM: "from-yellow-500/20 border-yellow-500/30",
+//   LOW: "from-emerald-500/20 border-emerald-500/30",
+// };
 
 function riskColor(score: number) {
   if (score >= 0.8) return "text-red-400";

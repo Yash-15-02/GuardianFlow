@@ -18,7 +18,10 @@ from backend.models import (
     CaseEvidence,
     AgentExecutionLog,
     MitigationAction,
+    CaseReasoning,
+    CaseDecision,
 )
+
 
 
 # ── Sessions ─────────────────────────────────────────────────────────────────
@@ -261,3 +264,67 @@ def create_mitigation_action(
     db.commit()
     db.refresh(action)
     return action
+
+
+# ── Reasoning CRUD ────────────────────────────────────────────────────────────
+
+def upsert_reasoning(
+    db: Session,
+    case_id: int,
+    result: Any,  # ReasoningResult from reasoning_service
+) -> CaseReasoning:
+    """Insert or replace the reasoning record for a case."""
+    import json
+    row = db.query(CaseReasoning).filter(CaseReasoning.case_id == case_id).first()
+    if row:
+        db.delete(row)
+        db.commit()
+    row = CaseReasoning(
+        case_id=case_id,
+        executive_summary=result.executive_summary,
+        findings_json=json.dumps(result.findings),
+        confidence=result.confidence,
+        rationale=result.rationale,
+        reasoning_trace_json=json.dumps(result.reasoning_trace),
+        provider=result.provider,
+        created_at=datetime.datetime.utcnow(),
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def get_reasoning_by_case(db: Session, case_id: int) -> CaseReasoning | None:
+    return db.query(CaseReasoning).filter(CaseReasoning.case_id == case_id).first()
+
+
+# ── Decision CRUD ─────────────────────────────────────────────────────────────
+
+def upsert_decision(
+    db: Session,
+    case_id: int,
+    result: Any,  # DecisionResult from decision_engine
+) -> CaseDecision:
+    """Insert or replace the decision record for a case."""
+    import json
+    row = db.query(CaseDecision).filter(CaseDecision.case_id == case_id).first()
+    if row:
+        db.delete(row)
+        db.commit()
+    row = CaseDecision(
+        case_id=case_id,
+        decision=result.decision,
+        decision_confidence=result.decision_confidence,
+        decision_rationale=result.decision_rationale,
+        decision_trace_json=json.dumps(result.decision_trace),
+        created_at=datetime.datetime.utcnow(),
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def get_decision_by_case(db: Session, case_id: int) -> CaseDecision | None:
+    return db.query(CaseDecision).filter(CaseDecision.case_id == case_id).first()
